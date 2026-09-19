@@ -58,6 +58,10 @@ class MainWindow(QMainWindow):
   if QMessageBox.question(self,"Usar o tema de ícones",f"Alterar o launcher do usuário para que {a.name} use a cadeia de temas?\n\nNenhum arquivo do sistema será modificado.") == QMessageBox.Yes:
    try: remove_absolute_icon(a); refresh_kde_icon_cache(); self.load_apps(); self.select_app()
    except (OSError,ValueError,PermissionError) as e: QMessageBox.warning(self,"Não foi possível alterar",str(e))
+ def prepare_icon_name(self, app):
+  if not app.icon.startswith('/'): return True
+  try: remove_absolute_icon(app); refresh_kde_icon_cache(); self.load_apps(); return True
+  except (OSError,ValueError,PermissionError) as e: QMessageBox.warning(self,"Não foi possível alterar o launcher",str(e)); return False
  def create(self):
   d=QDialog(self); d.setWindowTitle("Criar tema"); f=QFormLayout(d); name=QLineEdit("Yuri Icons"); desc=QLineEdit("Meu tema personalizado"); choices=self.themes; base=QComboBox(); base.addItems([t.display_name for t in choices]); available=QComboBox(); available.addItems([t.display_name for t in choices]); selected=QListWidget(); selected.setMaximumHeight(120); add=QPushButton("Adicionar fallback"); remove=QPushButton("Remover selecionado"); standard=QPushButton("Usar padrão Kubuntu (Breeze → hicolor)"); row=QHBoxLayout(); row.addWidget(add); row.addWidget(remove); box=QWidget(); box.setLayout(row)
   def add_fallback():
@@ -117,7 +121,7 @@ class MainWindow(QMainWindow):
   except (OSError,subprocess.CalledProcessError) as e: QMessageBox.warning(self,"Não foi possível reiniciar o Plasma",str(e))
  def choose_icon(self):
   a=self.selected()
-  if not a or not self.current:return
+  if not a or not self.current or not self.prepare_icon_name(a):return
   d=QDialog(self); d.setWindowTitle("Navegador de ícones"); d.resize(900,650); l=QVBoxLayout(d); theme=QComboBox(); theme.addItem("Todos os temas"); theme.addItems([t.display_name for t in self.themes]); theme.setCurrentIndex(0); row=QHBoxLayout(); search=QLineEdit(); search.setText(Path(a.icon).stem if a.icon else ""); search.setPlaceholderText("Pesquisar nome técnico"); find=QPushButton("Pesquisar"); row.addWidget(search,1); row.addWidget(find); grid=QListWidget(); grid.setViewMode(QListWidget.IconMode); grid.setIconSize(QSize(56,56)); grid.setGridSize(QSize(145,105)); use_btn=QPushButton("Usar este ícone"); status=QLabel("Carregando ícones..."); pages=QHBoxLayout(); previous=QPushButton("‹ Anterior"); next_=QPushButton("Próxima ›"); pages.addWidget(previous); pages.addStretch(); pages.addWidget(status); pages.addStretch(); pages.addWidget(next_); l.addWidget(QLabel("Pacote de ícones:")); l.addWidget(theme); l.addLayout(row); l.addWidget(status); l.addWidget(grid,1); l.addLayout(pages); l.addWidget(use_btn); files=[]; all_files=[]; page=0; page_size=100
   def fill(reset=True):
    nonlocal page,all_files
@@ -145,7 +149,7 @@ class MainWindow(QMainWindow):
   grid.itemDoubleClicked.connect(lambda _: choose()); use_btn.clicked.connect(choose); d.exec(); refresh_kde_icon_cache(); self.load_apps(); self.select_app()
  def choose_file(self):
   a=self.selected()
-  if not a or not self.current:return
+  if not a or not self.current or not self.prepare_icon_name(a):return
   p,_=QFileDialog.getOpenFileName(self,"Escolher arquivo de ícone",str(Path.home()),"Ícones (*.svg *.svgz *.png)")
   if p:
    try: override_for(self.current,a.icon,Path(p)); refresh_kde_icon_cache(); self.load_apps(); self.select_app()
